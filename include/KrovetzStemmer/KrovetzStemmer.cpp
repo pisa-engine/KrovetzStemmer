@@ -20,14 +20,14 @@
 \****************************************************************************/
 /*
   This is a stemmer that handles inflectional morphology and the
-  most common forms of derivational morphology.  It first checks a 
+  most common forms of derivational morphology.  It first checks a
   word against the dictionary, and if it is found it leaves it alone.
   If not, it handles inflectional endings (plurals into singular form,
   and past tense and "ing" endings into present tense), and then
   conflates the most common derivational variants.
-   
+
   Author: Bob Krovetz
-   
+
   6/16/04 (tds) Added kstem_allocate_memory, kstem_stem_to_buffer,
   and kstem_add_table_entry.  The kstem_allocate_memory/
   kstem_add_table_entry calls allow stemmer initialization
@@ -67,17 +67,17 @@ namespace stem {
     }
     loadTables();
   }
-    
-  KrovetzStemmer::~KrovetzStemmer() 
+
+  KrovetzStemmer::~KrovetzStemmer()
   {
     delete[](stemCache);
   }
-    
+
   /* Adds a stem entry into the hash table; forces the stemmer to stem
    * <variant> to <word>.  If <word> == "", <variant> is stemmed to itself.
    */
 
-  void KrovetzStemmer::kstem_add_table_entry( const char* variant, 
+  void KrovetzStemmer::kstem_add_table_entry( const char* variant,
                                               const char* word,
                                               bool exc) {
     dictTable::iterator it = dictEntries.find(variant);
@@ -111,7 +111,7 @@ namespace stem {
     return(dep);
   }
 
-  /* lookup(word) returns false if word is not found in the dictionary, 
+  /* lookup(word) returns false if word is not found in the dictionary,
      and true if it is */
 
   inline bool KrovetzStemmer::lookup(char *word)
@@ -126,11 +126,11 @@ namespace stem {
     char ch = word[i];
     if (ch == 'a' || ch == 'e' || ch == 'i' || ch == 'o' || ch == 'u')
       return(false);
-  
+
     if (ch != 'y' || i == 0)
       return(true);
     else {
-      /* ch == y, test previous char. If vowel, y is consonant 
+      /* ch == y, test previous char. If vowel, y is consonant
          the case of yy (previously handled via recursion) is ignored.
       */
       ch = word[i - 1];
@@ -139,17 +139,17 @@ namespace stem {
   }
 
 
-  inline bool KrovetzStemmer::vowel(int i) 
+  inline bool KrovetzStemmer::vowel(int i)
   {
     return ! cons(i);
   }
-  
+
 
   /* This routine is useful for ensuring that we don't stem acronyms */
 
   inline bool KrovetzStemmer::vowelinstem()
   {
-    for (int i = 0; i < stemlength; i++) 
+    for (int i = 0; i < stemlength; i++)
       if (vowel(i)) return(true);
     return(false);
   }
@@ -160,10 +160,10 @@ namespace stem {
   {
     if (i < 1)
       return(false);
-  
+
     if (word[i] != word[i - 1])
       return(false);
-  
+
     return(cons(i));
   }
 
@@ -171,10 +171,10 @@ namespace stem {
   {
     int r = wordlength - sufflength;    /* length of word before this suffix */
     bool match;
-  
+
     if (sufflength > k)
       return(false);
-  
+
     match = (strcmp((char *)word+r, (char *)str) == 0);
     j = (match ? r-1 : k);             /* use r-1 since j is an index rather than length */
     return(match);
@@ -200,31 +200,31 @@ namespace stem {
         if (lookup(word))        /* ensure calories -> calorie */
           return;
         k++;
-        word[j+3] = 's';             
-        setsuffix("y"); 
+        word[j+3] = 's';
+        setsuffix("y");
       }
-      else 
+      else
         if (ends_in("es")) {
           /* try just removing the "s" */
           word[j+2] = '\0';
           k--;
-	
+
           /* note: don't check for exceptions here.  So, `aides' -> `aide',
              but `aided' -> `aid'.  The exception for double s is used to prevent
              crosses -> crosse.  This is actually correct if crosses is a plural
              noun (a type of racket used in lacrosse), but the verb is much more
              common */
-	
+
           if ((lookup(word))  && j>0 && !((word[j] == 's') && (word[j-1] == 's')))
             return;
-	
+
           /* try removing the "es" */
-	
+
           word[j+1] = '\0';
           k--;
           if (lookup(word))
             return;
-	
+
           /* the default is to retain the "e" */
           word[j+1] = 'e';
           word[j+2] = '\0';
@@ -235,24 +235,24 @@ namespace stem {
           if (wordlength > 3 && penult_c != 's' && !ends_in("ous")) {
             /* unless the word ends in "ous" or a double "s", remove the final "s" */
             word[k] = '\0';
-            k--; 
+            k--;
           }
         }
-    }   
+    }
   }
 
   /* convert past tense (-ed) to present, and `-ied' to `y' */
 
   inline  void KrovetzStemmer::past_tense ()
   {
-    /* Handle words less than 5 letters with a direct mapping  
+    /* Handle words less than 5 letters with a direct mapping
        This prevents (fled -> fl).  */
-  
+
     if (wordlength <= 4)
       return;
 
     dictEntry *dep = 0;
-  
+
     if (ends_in("ied"))  {
       word[j+3] = '\0';
       k--;
@@ -263,29 +263,29 @@ namespace stem {
       setsuffix("y");
       return;
     }
-  
+
     /* the vowelinstem() is necessary so we don't stem acronyms */
     if (ends_in("ed") && vowelinstem())  {
       /* see if the root ends in `e' */
-      word[j+2] = '\0'; 
-      k = j + 1;              
-    
+      word[j+2] = '\0';
+      k = j + 1;
+
       if ((dep = getdep(word)) != (dictEntry *)NULL)
         if (!(dep->exception))    /* if it's in the dictionary and not an exception */
           return;
-    
+
       /* try removing the "ed" */
       word[j+1] = '\0';
       k = j;
       if (lookup(word))
         return;
-    
-    
+
+
       /* try removing a doubled consonant.  if the root isn't found in
          the dictionary, the default is to leave it doubled.  This will
          correctly capture `backfilled' -> `backfill' instead of
          `backfill' -> `backfille', and seems correct most of the time  */
-    
+
       if (doublec(k))  {
         word[k] = '\0';
         k--;
@@ -293,26 +293,26 @@ namespace stem {
           return;
         word[k+1] = word[k];
         k++;
-        return; 
+        return;
       }
-    
-    
-    
+
+
+
       /* if we have a `un-' prefix, then leave the word alone  */
       /* (this will sometimes screw up with `under-', but we   */
       /*  will take care of that later)                        */
-    
+
       if ((word[0] == 'u') && (word[1] == 'n'))  {
-        word[k+1] = 'e';                            
-        word[k+2] = 'd';                            
+        word[k+1] = 'e';
+        word[k+2] = 'd';
         k = k+2;
         return;
       }
-    
-    
+
+
       /* it wasn't found by just removing the `d' or the `ed', so prefer to
          end with an `e' (e.g., `microcoded' -> `microcode'). */
-    
+
       word[j+1] = 'e';
       word[j+2] = '\0';
       k = j + 1;
@@ -328,29 +328,29 @@ namespace stem {
        prevents (thing -> the) in the version of this routine that
        ignores inflectional variants that are mentioned in the dictionary
        (when the root is also present) */
-  
-    if (wordlength <= 5)                           
+
+    if (wordlength <= 5)
       return;
-    dictEntry *dep = 0;  
+    dictEntry *dep = 0;
     /* the vowelinstem() is necessary so we don't stem acronyms */
     if (ends_in("ing") && vowelinstem())  {
-    
+
       /* try adding an `e' to the stem and check against the dictionary */
       word[j+1] = 'e';
       word[j+2] = '\0';
-      k = j+1;          
-    
+      k = j+1;
+
       if ((dep = getdep(word)) != (dictEntry *)NULL)
         if (!(dep->exception))    /* if it's in the dictionary and not an exception */
           return;
-    
+
       /* adding on the `e' didn't work, so remove it */
       word[k] = '\0';
       k--;                                      /* note that `ing' has also been removed */
-    
+
       if (lookup(word))
         return;
-    
+
       /* if I can remove a doubled consonant and get a word, then do so */
       if (doublec(k))  {
         k--;
@@ -358,7 +358,7 @@ namespace stem {
         if (lookup(word))
           return;
         word[k+1] = word[k];       /* restore the doubled consonant */
-      
+
         /* the default is to leave the consonant doubled            */
         /*  (e.g.,`fingerspelling' -> `fingerspell').  Unfortunately */
         /*  `bookselling' -> `booksell' and `mislabelling' -> `mislabell'). */
@@ -367,7 +367,7 @@ namespace stem {
         k++;
         return;
       }
-    
+
       /* the word wasn't in the dictionary after removing the stem, and then
          checking with and without a final `e'.  The default is to add an `e'
          unless the word ends in two consonants, so `microcoding' -> `microcode'.
@@ -376,13 +376,13 @@ namespace stem {
          most of the time it is correct (e.g., footstamping -> footstamp, not
          footstampe; however, decoupled -> decoupl).  We can prevent almost all
          of the incorrect stems if we try to do some prefix analysis first */
-    
+
       if (j>0 && cons(j) && cons(j-1)) {
         k = j;
         word[k+1] = '\0';
         return;
       }
-    
+
       word[j+1] = 'e';
       word[j+2] = '\0';
       k = j+1;
@@ -392,54 +392,54 @@ namespace stem {
 
   /* handle some derivational endings */
 
-  /* this routine deals with -ion, -ition, -ation, -ization, and -ication.  The 
+  /* this routine deals with -ion, -ition, -ation, -ization, and -ication.  The
      -ization ending is always converted to -ize */
 
   inline  void KrovetzStemmer::ion_endings ()
   {
     int old_k = k;
-  
+
     if (ends_in("ization"))  {   /* the -ize ending is very productive, so simply accept it as the root */
       word[j+3] = 'e';
       word[j+4] = '\0';
       k = j+3;
-      return; 
+      return;
     }
-  
-  
-    if (ends_in("ition")) {     
+
+
+    if (ends_in("ition")) {
       word[j+1] = 'e';
       word[j+2] = '\0';
       k = j+1;
       if (lookup(word))     /* remove -ition and add `e', and check against the dictionary */
         return;                    /* (e.g., definition->define, opposition->oppose) */
-    
+
       /* restore original values */
       word[j+1] = 'i';
       word[j+2] = 't';
       k = old_k;
     }
-  
-  
+
+
     if (ends_in("ation"))  {
       word[j+3] = 'e';
       word[j+4] = '\0';
-      k = j+3;         
+      k = j+3;
       if (lookup(word))   /* remove -ion and add `e', and check against the dictionary */
         return;                  /* (elmination -> eliminate)  */
-    
-    
+
+
       word[j+1] = 'e';            /* remove -ation and add `e', and check against the dictionary */
       word[j+2] = '\0';           /* (allegation -> allege) */
       k = j+1;
       if (lookup(word))
         return;
-    
+
       word[j+1] = '\0';           /* just remove -ation (resignation->resign) and check dictionary */
       k = j;
       if (lookup(word))
         return;
-    
+
       /* restore original values */
       word[j+1] = 'a';
       word[j+2] = 't';
@@ -447,44 +447,44 @@ namespace stem {
       word[j+4] = 'o';            /* no need to restore word[j+5] (n); it was never changed */
       k = old_k;
     }
-  
-  
-    /* test -ication after -ation is attempted (e.g., `complication->complicate' 
+
+
+    /* test -ication after -ation is attempted (e.g., `complication->complicate'
        rather than `complication->comply') */
-  
+
     if (ends_in("ication"))  {
       word[j+1] = 'y';
       word[j+2] = '\0';
       k = j+1;
       if (lookup(word))  /* remove -ication and add `y', and check against the dictionary */
         return;                 /* (e.g., amplification -> amplify) */
-    
+
       /* restore original values */
       word[j+1] = 'i';
       word[j+2] = 'c';
       k = old_k;
     }
-  
-  
+
+
     if (ends_in("ion")) {
       word[j+1] = 'e';
       word[j+2] = '\0';
       k = j+1;
       if (lookup(word))    /* remove -ion and add `e', and check against the dictionary */
         return;
-    
+
       word[j+1] = '\0';
       k = j;
       if (lookup(word))    /* remove -ion, and if it's found, treat that as the root */
         return;
-    
+
       /* restore original values */
       word[j+1] = 'i';
       word[j+2] = 'o';
       k = old_k;
     }
-  
-  
+
+
     return;
   }
 
@@ -494,15 +494,15 @@ namespace stem {
   inline  void KrovetzStemmer::er_and_or_endings ()
   {
     int old_k = k;
-  
+
     char word_char;                 /* so we can remember if it was -er or -or */
-  
+
     if (ends_in("izer")) {          /* -ize is very productive, so accept it as the root */
       word[j+4] = '\0';
       k = j+3;
       return;
     }
-  
+
     if (ends_in("er") || ends_in("or")) {
       word_char = word[j+1];
       if (doublec(j)) {
@@ -512,19 +512,19 @@ namespace stem {
           return;
         word[j] = word[j-1];       /* restore the doubled consonant */
       }
-    
-    
+
+
       if (word[j] == 'i') {         /* do we have a -ier ending? */
         word[j] = 'y';
         word[j+1] = '\0';
         k = j;
         if (lookup(word))  /* yes, so check against the dictionary */
           return;
-        word[j] = 'i';             /* restore the endings */ 
+        word[j] = 'i';             /* restore the endings */
         word[j+1] = 'e';
-      }   
-    
-    
+      }
+
+
       if (word[j] == 'e') {         /* handle -eer */
         word[j] = '\0';
         k = j - 1;
@@ -532,7 +532,7 @@ namespace stem {
           return;
         word[j] = 'e';
       }
-    
+
       word[j+2] = '\0';            /* remove the -r ending */
       k = j+1;
       if (lookup(word))
@@ -546,28 +546,28 @@ namespace stem {
       k = j+1;
       if (lookup(word))
         return;
-    
+
       word[j+1] = word_char;       /* restore the word to the way it was */
       word[j+2] = 'r';
-      k = old_k;                  
+      k = old_k;
     }
-  
+
   }
 
-  /* this routine deals with -ly endings.  The -ally ending is always converted to -al 
+  /* this routine deals with -ly endings.  The -ally ending is always converted to -al
      Sometimes this will temporarily leave us with a non-word (e.g., heuristically
      maps to heuristical), but then the -al is removed in the next step.  */
 
   inline  void KrovetzStemmer::ly_endings ()
   {
     int old_k = k;
-  
+
     if (ends_in("ly")) {
       word[j+2] = 'e';             /* try converting -ly to -le */
-      if (lookup(word))       
+      if (lookup(word))
         return;
       word[j+2] = 'y';
-    
+
       word[j+1] = '\0';            /* try just removing the -ly */
       k = j;
       if (lookup(word))
@@ -576,13 +576,13 @@ namespace stem {
         return;
       word[j+1] = 'l';
       k = old_k;
-    
+
       if (j>0 && (word[j-1] == 'a') && (word[j] == 'b')) {  /* always convert -ably to -able */
         word[j+2] = 'e';
         k = j+2;
         return;
       }
-    
+
       if (word[j] == 'i') {        /* e.g., militarily -> military */
         word[j] = 'y';
         word[j+1] = '\0';
@@ -593,7 +593,7 @@ namespace stem {
         word[j+1] = 'l';
         k = old_k;
       }
-    
+
       word[j+1] = '\0';           /* the default is to remove -ly */
       k = j;
     }
@@ -603,16 +603,16 @@ namespace stem {
   /* this routine deals with -al endings.  Some of the endings from the previous routine
      are finished up here.  */
 
-  inline void KrovetzStemmer::al_endings() 
+  inline void KrovetzStemmer::al_endings()
   {
     int old_k = k;
-  
+
     if (ends_in("al"))  {
       word[j+1] = '\0';
       k = j;
       if (lookup(word))     /* try just removing the -al */
         return;
-    
+
       if (doublec(j))  {            /* allow for a doubled consonant */
         word[j] = '\0';
         k = j-1;
@@ -620,43 +620,43 @@ namespace stem {
           return;
         word[j] = word[j-1];
       }
-    
+
       word[j+1] = 'e';              /* try removing the -al and adding -e */
       word[j+2] = '\0';
       k = j+1;
       if (lookup(word))
         return;
-    
+
       word[j+1] = 'u';              /* try converting -al to -um */
       word[j+2] = 'm';              /* (e.g., optimal - > optimum ) */
       k = j+2;
       if (lookup(word))
         return;
-    
+
       word[j+1] = 'a';              /* restore the ending to the way it was */
       word[j+2] = 'l';
       word[j+3] = '\0';
       k = old_k;
-    
+
       if (j>0 && (word[j-1] == 'i') && (word[j] == 'c'))  {
         word[j-1] = '\0';          /* try removing -ical  */
         k = j-2;
         if (lookup(word))
           return;
-      
+
         word[j-1] = 'y';           /* try turning -ical to -y (e.g., bibliographical) */
         word[j] = '\0';
         k = j-1;
         if (lookup(word))
           return;
-      
+
         word[j-1] = 'i';
         word[j] = 'c';
         word[j+1] = '\0';          /* the default is to convert -ical to -ic */
         k = j;
         return;
       }
-    
+
       if (word[j] == 'i') {        /* sometimes -ial endings should be removed */
         word[j] = '\0';           /* (sometimes it gets turned into -y, but we */
         k = j-1;                  /* aren't dealing with that case for now) */
@@ -665,7 +665,7 @@ namespace stem {
         word[j] = 'i';
         k = old_k;
       }
-    
+
     }
     return;
   }
@@ -673,16 +673,16 @@ namespace stem {
   /* this routine deals with -ive endings.  It normalizes some of the
      -ative endings directly, and also maps some -ive endings to -ion. */
 
-  inline void KrovetzStemmer::ive_endings() 
+  inline void KrovetzStemmer::ive_endings()
   {
     int old_k = k;
-  
+
     if (ends_in("ive"))  {
       word[j+1] = '\0';          /* try removing -ive entirely */
       k = j;
       if (lookup(word))
         return;
-    
+
       word[j+1] = 'e';           /* try removing -ive and adding -e */
       word[j+2] = '\0';
       k = j+1;
@@ -690,7 +690,7 @@ namespace stem {
         return;
       word[j+1] = 'i';
       word[j+2] = 'v';
-    
+
       if (j>0 && (word[j-1] == 'a') && (word[j] == 't'))  {
         word[j-1] = 'e';       /* try removing -ative and adding -e */
         word[j] = '\0';        /* (e.g., determinative -> determine) */
@@ -704,13 +704,13 @@ namespace stem {
         word[j] = 't';
         k = old_k;
       }
-    
+
       /* try mapping -ive to -ion (e.g., injunctive/injunction) */
       word[j+2] = 'o';
       word[j+3] = 'n';
       if (lookup(word))
         return;
-    
+
       word[j+2] = 'v';       /* restore the original values */
       word[j+3] = 'e';
       k = old_k;
@@ -720,17 +720,17 @@ namespace stem {
 
   /* this routine deals with -ize endings. */
 
-  inline  void KrovetzStemmer::ize_endings() 
+  inline  void KrovetzStemmer::ize_endings()
   {
     int old_k = k;
-  
+
     if (ends_in("ize"))  {
       word[j+1] = '\0';       /* try removing -ize entirely */
       k = j;
       if (lookup(word))
         return;
       word[j+1] = 'i';
-    
+
       if (doublec(j))  {      /* allow for a doubled consonant */
         word[j] = '\0';
         k = j-1;
@@ -738,7 +738,7 @@ namespace stem {
           return;
         word[j] = word[j-1];
       }
-    
+
       word[j+1] = 'e';        /* try removing -ize and adding -e */
       word[j+2] = '\0';
       k = j+1;
@@ -753,10 +753,10 @@ namespace stem {
 
   /* this routine deals with -ment endings. */
 
-  inline  void KrovetzStemmer::ment_endings() 
+  inline  void KrovetzStemmer::ment_endings()
   {
     int old_k = k;
-  
+
     if (ends_in("ment"))  {
       word[j+1] = '\0';
       k = j;
@@ -769,14 +769,14 @@ namespace stem {
   }
 
   /* this routine deals with -ity endings.  It accepts -ability, -ibility,
-     and -ality, even without checking the dictionary because they are so 
+     and -ality, even without checking the dictionary because they are so
      productive.  The first two are mapped to -ble, and the -ity is remove
      for the latter */
 
-  inline  void KrovetzStemmer::ity_endings() 
+  inline  void KrovetzStemmer::ity_endings()
   {
     int old_k = k;
-  
+
     if (ends_in("ity"))  {
       word[j+1] = '\0';             /* try just removing -ity */
       k = j;
@@ -790,17 +790,17 @@ namespace stem {
       word[j+1] = 'i';
       word[j+2] = 't';
       k = old_k;
-    
+
       /* the -ability and -ibility endings are highly productive, so just accept them */
-      if (j>0 && (word[j-1] == 'i') && (word[j] == 'l'))  {   
+      if (j>0 && (word[j-1] == 'i') && (word[j] == 'l'))  {
         word[j-1] = 'l';          /* convert to -ble */
         word[j] = 'e';
         word[j+1] = '\0';
         k = j;
         return;
       }
-    
-    
+
+
       /* ditto for -ivity */
       if (j>0 && (word[j-1] == 'i') && (word[j] == 'v'))  {
         word[j+1] = 'e';         /* convert to -ive */
@@ -808,23 +808,23 @@ namespace stem {
         k = j+1;
         return;
       }
-    
+
       /* ditto for -ality */
       if (j>0 && (word[j-1] == 'a') && (word[j] == 'l'))  {
         word[j+1] = '\0';
         k = j;
         return;
       }
-    
+
       /* if the root isn't in the dictionary, and the variant *is*
          there, then use the variant.  This allows `immunity'->`immune',
          but prevents `capacity'->`capac'.  If neither the variant nor
          the root form are in the dictionary, then remove the ending
          as a default */
-    
-      if (lookup(word))   
+
+      if (lookup(word))
         return;
-    
+
       /* the default is to remove -ity altogether */
       word[j+1] = '\0';
       k = j;
@@ -834,18 +834,18 @@ namespace stem {
 
   /* handle -able and -ible */
 
-  inline  void KrovetzStemmer::ble_endings() 
+  inline  void KrovetzStemmer::ble_endings()
   {
     int old_k = k;
     char word_char;
-  
+
     if (ends_in("ble"))  {
       if (!((word[j] == 'a') || (word[j] == 'i')))
         return;
       word_char = word[j];
       word[j] = '\0';             /* try just removing the ending */
       k = j-1;
-      if (lookup(word)) 
+      if (lookup(word))
         return;
       if (doublec(k))  {          /* allow for a doubled consonant */
         word[k] = '\0';
@@ -860,7 +860,7 @@ namespace stem {
       k = j;
       if (lookup(word))
         return;
-    
+
       word[j] = 'a';              /* try removing -able and adding -ate */
       word[j+1] = 't';            /* (e.g., compensable/compensate)     */
       word[j+2] = 'e';
@@ -868,7 +868,7 @@ namespace stem {
       k = j+2;
       if (lookup(word))
         return;
-    
+
       word[j] = word_char;        /* restore the original values */
       word[j+1] = 'b';
       word[j+2] = 'l';
@@ -880,12 +880,12 @@ namespace stem {
 
   /* handle -ness */
 
-  inline  void KrovetzStemmer::ness_endings() 
+  inline  void KrovetzStemmer::ness_endings()
   {
     if (ends_in("ness"))  {     /* this is a very productive endings, so just accept it */
       word[j+1] = '\0';
       k = j;
-      if (word[j] == 'i')  
+      if (word[j] == 'i')
         word[j] = 'y';
     }
     return;
@@ -915,22 +915,22 @@ namespace stem {
       k = j+4;
       if (lookup(word))
         return;
-    
+
       word[j+1] = 'y';        /* try converting -ic to -y */
       word[j+2] = '\0';
       k = j+1;
       if (lookup(word))
         return;
-    
+
       word[j+1] = 'e';        /* try converting -ic to -e */
       if (lookup(word))
         return;
-    
+
       word[j+1] = '\0';       /* try removing -ic altogether */
       k = j;
       if (lookup(word))
         return;
-    
+
       word[j+1] = 'i';        /* restore the original ending */
       word[j+2] = 'c';
       word[j+3] = '\0';
@@ -949,10 +949,10 @@ namespace stem {
       word[j+2] = 't';          /* try converting -ncy to -nt */
       word[j+3] = '\0';         /* (e.g., constituency -> constituent) */
       k = j+2;
-    
+
       if (lookup(word))
         return;
-    
+
       word[j+2] = 'c';          /* the default is to convert it to -nce */
       word[j+3] = 'e';
       k = j+3;
@@ -965,9 +965,9 @@ namespace stem {
   inline  void KrovetzStemmer::nce_endings()
   {
     int old_k = k;
-  
+
     char word_char;
-  
+
     if (ends_in("nce"))  {
       if (!((word[j] == 'e') || (word[j] == 'a')))
         return;
@@ -993,7 +993,7 @@ namespace stem {
     bool stem_it = true;
     int hval;
     dictEntry *dep = 0;
-      
+
     k = (int)strlen(term) - 1;
     /* if the word is too long or too short, or not entirely
        alphabetic, just lowercase copy it into stem and return */
@@ -1020,14 +1020,14 @@ namespace stem {
     /* If it's found, mark the slot in which it is found */
     /* Note that there is no need to lowercase the term in this case */
     stemhash(term, hval);
-  
+
     if (strcmp(term, stemCache[hval].word1) == 0) {
       strcpy(buffer, stemCache[hval].stem1);
-      stemCache[hval].flag = 1; 
+      stemCache[hval].flag = 1;
       return (int)strlen(buffer)+1;
     } else if (strcmp(term, stemCache[hval].word2) == 0) {
       strcpy(buffer, stemCache[hval].stem2);
-      stemCache[hval].flag = 2; 
+      stemCache[hval].flag = 2;
       return (int)strlen(buffer)+1;
     }
 
@@ -1043,12 +1043,12 @@ namespace stem {
        it is if the word is found. Otherwise, recognize plurals, tense, etc.
        and normalize according to the rules for those affixes.  Check against
        the dictionary after each stage, so `longings' -> `longing' rather than
-       `long'. Finally, deal with some derivational endings.  The -ion, -er, 
+       `long'. Finally, deal with some derivational endings.  The -ion, -er,
        and -ly endings must be checked before -ize.  The -ity ending must come
        before -al, and -ness must come before -ly and -ive.  Finally, -ncy must
        come before -nce (because -ncy is converted to -nce for some instances).
     */
-  
+
     /* This while loop will never repeat; it is only here to allow the
        break statement to be used to escape as soon as a word is recognized.
     */
@@ -1091,18 +1091,18 @@ namespace stem {
         dep = getdep(word);
         break;
       }
-  
+
     /* try for a direct mapping (allows for cases like `Italian'->`Italy' and
        `Italians'->`Italy')
     */
-    if (dep != (dictEntry *)NULL && dep->root[0] != '\0')  {                 
-      strcpy((char *)buffer, (char *)dep->root);   
+    if (dep != (dictEntry *)NULL && dep->root[0] != '\0')  {
+      strcpy((char *)buffer, (char *)dep->root);
     }
     /* Enter into cache, at the place not used by the last cache hit */
     if (stemCache[hval].flag == 2) {
       strcpy(stemCache[hval].word1, term);
       strcpy(stemCache[hval].stem1, buffer);
-      stemCache[hval].flag = 1; 
+      stemCache[hval].flag = 1;
     } else {
       strcpy(stemCache[hval].word2, term);
       strcpy(stemCache[hval].stem2, buffer);
@@ -1128,7 +1128,7 @@ namespace stem {
   };
 
   //
-  // Below this line, you'll find hard-coded dictionaries for the 
+  // Below this line, you'll find hard-coded dictionaries for the
   // Krovetz stemmer.
   // These arrays include the data formerly found in these files:
   //   country_nationality.txt
@@ -1149,8 +1149,8 @@ namespace stem {
     "tine", "tope", "tripe", "twine",
     NULL
   };
-    
-  static const struct conflation_pair conflations[] = 
+
+  static const struct conflation_pair conflations[] =
     {
       {"aging", "age"}, {"going", "go"}, {"goes", "go"}, {"lying", "lie"},
       {"using", "use"}, {"owing", "owe"}, {"suing", "sue"}, {"dying", "die"},
@@ -1246,7 +1246,7 @@ namespace stem {
       { NULL, NULL }
     };
 
-  static const char* const headwords[] = 
+  static const char* const headwords[] =
     {
       "aids",
       "applicator", "capacitor", "digitize", "electromagnet",
@@ -6827,26 +6827,3 @@ namespace stem {
     }
   }
 }
-
-#ifdef UNIT_TEST
-int main(int argc, char *argv[])
-{
-  char word[80];
-  char thestem[80];
-  int ret;
-  stem::KrovetzStemmer * stemmer = new stem::KrovetzStemmer();
-   
-  do  {
-    gets(word);
-    if (*word == '\0') break;
-
-    ret = stemmer->kstem_stem_tobuffer(word, thestem);
-    if (ret > 0) 
-      printf("%s -> %s\n", word,thestem);
-    else 
-      printf("%s -> %s\n", word, word);
-  } while(!feof(stdin));
-  delete(stemmer);
-  return(0);
-}
-#endif

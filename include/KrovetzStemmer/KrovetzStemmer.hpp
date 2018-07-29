@@ -16,22 +16,11 @@
 #define _KROVETZ_STEMMER_H_
 #include <iostream>
 #include <cstring>
+
 #ifdef WIN32
 #include <hash_map>
 #else
-// Move this somewhere
-#ifndef HAVE_GCC_VERSION
-#define HAVE_GCC_VERSION(MAJOR, MINOR)                                  \
-  (__GNUC__ > (MAJOR) || (__GNUC__ == (MAJOR) && __GNUC_MINOR__ >= (MINOR)))
-#endif /* ! HAVE_GCC_VERSION */
-#if HAVE_GCC_VERSION(4,3)
-// if GCC 4.3+
-#include <tr1/unordered_map>
-#else
-#include <ext/hash_map>
-#endif
-// 3.3 does not use __gnu_cxx, 3.4+ does.
-using namespace __gnu_cxx;
+#include <unordered_map>
 #endif
 
 namespace stem {
@@ -42,14 +31,14 @@ namespace stem {
     /// maximum number of characters in a word to be stemmed.
     static const int MAX_WORD_LENGTH=25;
     /*!
-      \brief stem a term using the Krovetz algorithm. 
+      \brief stem a term using the Krovetz algorithm.
       The stem returned may be longer than the input term.
       May return a pointer
       to the private attribute stem. Performs case normalization on its
       input argument. Return values should be copied before
       calling the method again.
       @param term the term to stem
-      @return the stemmed term or the original term if no stemming was 
+      @return the stemmed term or the original term if no stemming was
       performed.
     */
     char * kstem_stemmer(char *term);
@@ -57,7 +46,7 @@ namespace stem {
       \brief stem a term using the Krovetz algorithm into the specified
       buffer.
       The stem returned may be longer than the input term.
-      Performs case normalization on its input argument. 
+      Performs case normalization on its input argument.
       @param term the term to stem
       @param buffer the buffer to hold the stemmed term. The buffer should
       be at MAX_WORD_LENGTH or larger.
@@ -72,20 +61,20 @@ namespace stem {
       stems to itself.
       @param exc Is the word an exception to the spelling rules.
     */
-    void kstem_add_table_entry(const char* variant, const char* word, 
+    void kstem_add_table_entry(const char* variant, const char* word,
                                bool exc=false);
   private:
     /// Dictionary table entry
     typedef struct dictEntry {
       /// is the word an exception to stemming rules?
-      bool exception;      
+      bool exception;
       /// stem to use for this entry.
       const char *root;
     } dictEntry;
     /// Two term hashtable entry for caching across calls
     typedef struct cacheEntry {
       /// flag for first or second entry most recently used.
-      char flag; 
+      char flag;
       /// first entry variant
       char word1[MAX_WORD_LENGTH];
       /// first entry stem
@@ -139,11 +128,8 @@ namespace stem {
         return strcmp(s1, s2) == 0;
       }
     };
-#if HAVE_GCC_VERSION(4,3)
-    typedef std::tr1::unordered_map<const char *, dictEntry, std::tr1::hash<std::string>, eqstr> dictTable;
-#else
-    typedef hash_map<const char *, dictEntry, hash<const char *>, eqstr> dictTable;
-#endif
+
+    typedef std::unordered_map<const char *, dictEntry, std::hash<std::string>, eqstr> dictTable;
 #endif
     dictTable dictEntries;
     // this needs to be a bounded size cache.
