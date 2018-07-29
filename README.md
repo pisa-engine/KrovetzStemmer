@@ -1,0 +1,2 @@
+# KrovetzStemmer
+Krovetz stemming library
