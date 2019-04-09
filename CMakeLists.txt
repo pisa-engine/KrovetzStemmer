@@ -30,6 +30,10 @@ include_directories(include)
 add_library(KrovetzStemmer STATIC include/KrovetzStemmer/KrovetzStemmer.cpp
                                   include/KrovetzStemmer/KrovetzStemmer.hpp
 )
+target_include_directories(KrovetzStemmer INTERFACE
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:${PROJECT_NAME}/include>
+)
 
 include(CTest)
 if(KrovetzStemmer_ENABLE_TESTING AND BUILD_TESTING)
