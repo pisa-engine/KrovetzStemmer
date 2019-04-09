@@ -8,6 +8,8 @@ MESSAGE( STATUS "CMAKE_BUILD_TYPE: " ${CMAKE_BUILD_TYPE} )
 
 project(KrovetzStemmer)
 
+option(KrovetzStemmer_ENABLE_TESTING "Enable testing of the library." ON)
+
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
     if (CXX_COMPILER_VERSION VERSION_LESS 4.7)
         message(STATUS "GCC version must be at least 4.7!")
@@ -24,12 +26,14 @@ else ()
     message(FATAL_ERROR "Please, use GCC or Clang compiler!")
 endif()
 
-add_subdirectory(external)
-
 include_directories(include)
 add_library(KrovetzStemmer STATIC include/KrovetzStemmer/KrovetzStemmer.cpp
                                   include/KrovetzStemmer/KrovetzStemmer.hpp
 )
 
-enable_testing()
-add_subdirectory(test)
+include(CTest)
+if(KrovetzStemmer_ENABLE_TESTING AND BUILD_TESTING)
+    add_subdirectory(external)
+    enable_testing()
+    add_subdirectory(test)
+endif()
