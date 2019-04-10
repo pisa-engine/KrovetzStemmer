@@ -6,8 +6,8 @@
 using namespace ::testing;
 
 TEST(KrovetzStemmerTest, TestVerbInIng) {
-    stem::KrovetzStemmer * stemmer = new stem::KrovetzStemmer();
-    std::string thestem = stemmer->kstem_stemmer((char*)"eating");
+    stem::KrovetzStemmer stemmer;
+    std::string thestem = stemmer.kstem_stemmer("eating");
     ASSERT_EQ(thestem, "eat");
 }
 

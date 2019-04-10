@@ -16,6 +16,7 @@
 #define _KROVETZ_STEMMER_H_
 #include <iostream>
 #include <cstring>
+#include <string>
 
 #ifdef WIN32
 #include <hash_map>
@@ -41,7 +42,8 @@ namespace stem {
       @return the stemmed term or the original term if no stemming was
       performed.
     */
-    char * kstem_stemmer(char *term);
+
+    std::string kstem_stemmer(const std::string &str);
     /*!
       \brief stem a term using the Krovetz algorithm into the specified
       buffer.

@@ -1111,8 +1111,10 @@ namespace stem {
     return (int)strlen(buffer)+1;
   }
 
-  char * KrovetzStemmer::kstem_stemmer(char *term)
+  std::string KrovetzStemmer::kstem_stemmer(const std::string &str)
   {
+    char * term = const_cast<char *>(str.c_str());
+
     int length = kstem_stem_tobuffer( term, stem );
 
     if( length )
